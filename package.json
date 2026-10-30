@@ -4,14 +4,27 @@
   "private": true,
   "type": "module",
   "description": "OO SVG command-line editor for Lab1 Phase 1",
-  "engines": { "node": ">=22" },
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "cli": "tsx src/cli/Main.ts",
-    "test": "tsx --test test/*.test.ts",
+    "cli": "node --import tsx src/cli/Main.ts",
+    "test": "node --import tsx --test test/*.test.ts",
     "lint": "eslint src test",
-    "demo": "tsx src/cli/Main.ts < scripts/flowchart.cli",
+    "demo": "node --import tsx src/cli/Main.ts < scripts/flowchart.cli",
     "check": "npm run typecheck && npm run lint && npm test && npm run build"
+  },
+  "dependencies": {
+    "saxes": "^6.0.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^26.6.6",
+    "eslint": "^10.13.0",
+    "tsx": "^4.23.15",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.72.1"
   }
 }
