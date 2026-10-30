@@ -1,6 +1,6 @@
 # Fudan SVG CLI — Lab1 Phase 1
 
-复旦大学高级软件开发技术 Lab1 Phase 1：TypeScript 面向对象 SVG CLI 编辑器。作者账号：[Zyrrick / Ziyuan Liu](https://github.com/Zyrrick)，本次实现由 Codex 在用户授权下分阶段完成。
+复旦大学高级软件开发技术 Lab1 Phase 1：TypeScript 面向对象 SVG CLI 编辑器。
 
 公开仓库：[Zyrrick/fudan-svg-cli-lab1](https://github.com/Zyrrick/fudan-svg-cli-lab1)，可直接访问。交付标签：[final](https://github.com/Zyrrick/fudan-svg-cli-lab1/tree/final)。
 
