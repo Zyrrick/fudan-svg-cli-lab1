@@ -20,7 +20,7 @@ npm run cli
 
 ```sh
 npm run check             # 源码和测试类型检查、ESLint、自动测试、构建
-npm test                  # 17 项行为/架构测试，含真实 CLI 子进程
+npm test                  # 20 项行为/架构测试，含真实 CLI 子进程
 npm run build
 node dist/cli/Main.js     # 执行已编译版本
 npm run demo              # 原文 6.1 两节点流程图
@@ -35,7 +35,7 @@ npm run demo:transforms   # 原文 0.1 嵌套 translate/scale 示例
 - 内置 `rect`、`circle`、`ellipse`、`line`、`text`、`g`，支持所有 Phase 1 命令。`box` 和插件接口属于后续阶段，明确报 unknown shape type。
 - ID 唯一且大小写敏感；支持浮点、双引号参数、`\"`/`\\` 转义和整行 `#` 注释。行内 `#` 不作为注释，以保留颜色值。
 - 一条成功编辑是一个 undo 单元；失败不改变文档、路径或历史。成功 init/read/save/canvas 修改清空历史并建立 IO 屏障；无参数 canvas 和显示命令不影响历史。成功编辑解除屏障，undo 后新编辑清空 redo。
-- `init [w] [h]` 缺省 800×600；`canvas w` 只改宽度；首次 save 必须指定路径，此后无参数使用最近成功 read/save 的路径。
+- `init [w] [h]` 缺省 800×600；`canvas w` 只改宽度；无参数 save 保存到最近成功 read 的原路径，显式另存不会改变该来源。init 清除读入来源，之后即使已显式保存，无参数 save 仍报错，直到下一次成功 read。
 - `group` 按原文的“保持相对顺序”解释为全文档前序遍历顺序，新增组置于画布根末尾；`ungroup` 保持原位置，顶层 g 禁止解散。`front` 放到同级数组末尾，即最后绘制、视觉最前方。
 - 容器设置 fill/stroke 等采用 SVG 继承语义；更换父容器会相应改变继承来源。scale 同乘位置和尺寸，不修改普通编辑中的线宽或字号（不属于本阶段几何白名单）。
 

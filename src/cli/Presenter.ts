@@ -22,7 +22,7 @@ export class Presenter {
     return `Document (successful writes reset undo/redo):
   init [w] [h]                  defaults: 800 600
   read <file.svg>
-  save [file.svg]                defaults to current read/save path
+  save [file.svg]                defaults to last successful read path
   canvas [w] [h]                 no args: inspect; one arg: width only
 Editable shapes:
   create rect <id> <x> <y> <w> <h> [fill] [in <containerId>]

@@ -45,7 +45,7 @@ io --> model
 |---|---|
 | `model` | `Shape` 封装 ID、父指针与样式；`GeometricShape` 封装数值和几何操作；Rect/Circle/Ellipse/Line/Text/Group 六个具体类；`Document` 维护唯一 ID、层级、前序顺序、分组和快照；`ShapeFactory` 是唯一类型名分派 |
 | `commands` | `Command` 的 execute 模板保证原子应用并持有前后 Memento；Create/Delete/Move/Scale/Set/Group/Ungroup/AddTo/Order 各类只描述一条操作，不读写文件或输出终端 |
-| `application` | `Editor` 持有当前文档和当前路径，协调文件解析与成功提交；`History` 持有 Command 栈与 IO 屏障 |
+| `application` | `Editor` 持有当前文档和最近成功 read 的原路径，协调文件解析与成功提交；`History` 持有 Command 栈与 IO 屏障 |
 | `io` | `FilePort` 可替换文件边界；`NodeFilePort` 同目录临时文件加 rename 原子替换；`SvgCodec` 用 saxes 解析 XML、预留 ID；`SvgElement` 为短生命周期解析树；`SvgTransform` 展开有限仿射变换 |
 | `cli` | `Main` 连接 readline 和标准输入输出；`Tokenizer` 处理引用和整行注释；`Controller` 是唯一命令名分派；`Presenter` 输出树、属性和帮助 |
 
@@ -143,9 +143,9 @@ SvgCodec --> Document
 
 ### 质量保证
 
-详见 [QA.md](QA.md)。已执行 `npm run check`：源码及测试 TypeScript 检查、ESLint、17 项测试、构建均通过；失败不变性测试逐条检查 36 类错误，并在每次失败后 redo 验证旧分支仍存在。通过真实文件原子替换测试、CLI 子进程和三个原文场景回放。
+详见 [QA.md](QA.md)。已执行 `npm run check`：源码及测试 TypeScript 检查、ESLint、20 项测试、构建均通过；失败不变性测试逐条检查 36 类错误，并在每次失败后 redo 验证旧分支仍存在。通过真实文件原子替换测试、CLI 子进程和三个原文场景回放。
 
-V8 实测覆盖率（Node 26.5.0、tsx 加载器）为行 99.63%、分支 95.47%、函数 99.04%，只作为辅助证据，不等同于形式证明。Node 22/24 的 GitHub Actions 已实际通过（对应 d4af0ae）；最终提交的远端状态另以 final 标签和 Actions 为准。
+V8 实测覆盖率（Node 26.5.0、tsx 加载器，含 save 修复回归）为行 99.63%、分支 95.67%、函数 99.04%，只作为辅助证据，不等同于形式证明。Node 22/24 的 GitHub Actions 已实际通过（初始对应 d4af0ae）；最终提交的远端状态另以 final 标签和 Actions 为准。
 
 ### 用户后续授权：公开仓库
 
@@ -156,3 +156,9 @@ V8 实测覆盖率（Node 26.5.0、tsx 加载器）为行 99.63%、分支 95.47%
 父任务复核指出提交说明中的身份资料表述不准确，并要求面向老师呈现验收信息。AI 删除该失实表述，将访问说明简化为“公开仓库，可直接访问”，移除权限操作、扫描和附件预览/提交状态等内部叙述；保留真实 AI 协作披露、运行方法、验证结果和限制。检查其他当前文档，没有发现同类身份资料声明；公开文档不新增个人身份编号。
 
 本次以新的文档修正提交保留真实记录，不改写已有提交历史。课程尚未提交，按明确要求在重新检查后将 `final` 从 `0c8597cef20484e69f9395697d9d391057e0d63e` 更新到本次修正提交，并重新核验远端标签与 main 一致；源码归档与独立提交 README 同步更新。
+
+### 原文 save 语义复核与修正
+
+最终只读复核发现原实现把默认保存路径解释为“最近成功 read/save 的路径”，与原文“读入时的路径”有差异。AI 用内存文件复现 `read original.svg → save copy.svg → 编辑 → save`，确认错误地写入副本。随后按原文修复：Editor 只在成功 read 后记录来源，显式 save 不改变来源，成功 init 清除来源；init 后无来源的无参数 save 报错且不改变文档或历史。
+
+新增三项回归，核验另存后仍保存原文件、显式/默认保存失败的来源与 redo 不变性、init 清除来源及成功保存的 undo/redo 屏障；总测试数由 17 增至 20。旧测试中默认保存来自显式 save 的假设也同步改为先 read。CLI 帮助和 README 已统一为原文字义。修复以新 fix 提交保存真实历史，完整检查与对应 CI 通过后，将 `final` 从 `ac0f1057ce203226f4277f7083698167fa8c70c4` 更新到本次修正提交，并重新生成交付附件。

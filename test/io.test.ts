@@ -69,6 +69,7 @@ test('successful IO barriers and failed read/write leave document, history and p
   fail = true; assert.throws(() => editor.save('bad.svg'), /cannot write file: bad.svg/);
   assert.equal(editor.document().xml(), before); editor.undo(); editor.redo();
   fail = false; editor.save('good.svg'); assert.throws(() => editor.undo(), /io command/);
+  editor.read('good.svg');
   editor.execute(new CreateCommand(['g', 'b'])); editor.canvas(); editor.undo();
   assert.equal(editor.document().xml(), before);
   storage.set('malformed.svg', '<svg>'); assert.throws(() => editor.read('malformed.svg'));
