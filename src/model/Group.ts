@@ -1,32 +1,35 @@
 import { Shape } from './Shape.js';
 import { Validation } from './Validation.js';
-export class Group extends Shape {
-  private readonly nodes: Shape[] = [];
+import { Hierarchy } from './Hierarchy.js';
+import type { Container } from './Container.js';
+import { GeometryState } from './GeometryState.js';
+export class Group extends Shape implements Container {
   constructor(id: string) { super(id, 'g'); }
-  override children(): readonly Shape[] { return this.nodes.slice(); }
-  add(shape: Shape, index = this.nodes.length): void {
-    if (shape.contains(this)) throw new Error(`cannot add container into its own descendant: ${shape.id}`);
-    if (shape.parent) throw new Error('shape must be detached before attachment');
-    if (!Number.isInteger(index) || index < 0 || index > this.nodes.length) throw new Error('invalid child index');
-    this.nodes.splice(index, 0, shape);
-    shape.attach(this);
+  get component(): Shape { return this; }
+  override asContainer(): Container { return this; }
+  override children(): readonly Shape[] { return Hierarchy.children(this); }
+  add(shape: Shape, index?: number): void { Hierarchy.add(this, shape, index); }
+  remove(shape: Shape): number { return Hierarchy.remove(this, shape); }
+  override geometryTargets(): readonly Shape[] { return this.children().flatMap(child => child.geometryTargets()); }
+  override move(dx: number, dy: number): void {
+    Validation.finite(dx); Validation.finite(dy); const targets = this.geometryTargets(); const before = new GeometryState(targets);
+    try { targets.forEach(child => child.move(dx, dy)); } catch (error) { before.restore(); throw error; }
   }
-  remove(shape: Shape): number {
-    const index = this.nodes.indexOf(shape);
-    if (index < 0) throw new Error('shape is not a child');
-    this.nodes.splice(index, 1); shape.attach(null); return index;
-  }
-  override move(dx: number, dy: number): void { this.nodes.forEach(child => child.move(dx, dy)); }
   override scale(factor: number): void {
     Validation.positive(factor, 'scale factor must be positive');
-    this.nodes.forEach(child => child.scale(factor));
+    const targets = this.geometryTargets(); const before = new GeometryState(targets);
+    try { targets.forEach(child => child.scale(factor)); } catch (error) { before.restore(); throw error; }
   }
+  override importChildren(children: readonly Shape[]): void { children.forEach(child => this.add(child)); }
+  // Descendants already receive the composed import transform; applying it again would double it.
+  override importTransform(_factor: number, _dx: number, _dy: number, _inherited: ReadonlyMap<string, string>): void {}
   protected override duplicate(): Group {
-    const copy = new Group(this.id); this.nodes.forEach(child => copy.add(child.clone())); return copy;
+    const copy = new Group(this.id); this.children().forEach(child => copy.add(child.clone())); return copy;
   }
   protected override geometry(): ReadonlyMap<string, string> { return new Map(); }
   protected override describeGeometry(): string { return ''; }
   protected override xmlBody(indent: string): string {
-    return this.nodes.length ? `>\n${this.nodes.map(child => child.xml(indent + '  ')).join('\n')}\n${indent}</g>` : '/>';
+    const children = this.children();
+    return children.length ? `>\n${children.map(child => child.xml(indent + '  ')).join('\n')}\n${indent}</g>` : '/>';
   }
 }

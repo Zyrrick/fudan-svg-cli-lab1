@@ -1,5 +1,4 @@
 import { Shape } from '../model/Shape.js';
-import { Text } from '../model/Text.js';
 import { Validation } from '../model/Validation.js';
 
 /** Restricted SVG affine transform: positive uniform scale plus translation. */
@@ -30,10 +29,6 @@ export class SvgTransform {
     return new SvgTransform(Validation.positive(Validation.finite(this.factor * local.factor)), Validation.finite(this.dx + this.factor * local.dx), Validation.finite(this.dy + this.factor * local.dy));
   }
   apply(shape: Shape, inherited: ReadonlyMap<string, string>): void {
-    shape.scale(this.factor); shape.move(this.dx, this.dy);
-    if (this.factor !== 1) {
-      shape.importAttribute('stroke-width', String(Validation.finite(Validation.number(inherited.get('stroke-width') ?? '1') * this.factor)));
-      if (shape instanceof Text) shape.importAttribute('font-size', String(Validation.finite(Validation.number(inherited.get('font-size') ?? '16') * this.factor)));
-    }
+    shape.importTransform(this.factor, this.dx, this.dy, inherited);
   }
 }

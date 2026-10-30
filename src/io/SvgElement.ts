@@ -1,6 +1,4 @@
 import { Shape } from '../model/Shape.js';
-import { Group } from '../model/Group.js';
-import { Text } from '../model/Text.js';
 import { ShapeFactory } from '../model/ShapeFactory.js';
 import { SvgTransform } from './SvgTransform.js';
 
@@ -21,14 +19,8 @@ export class SvgElement {
     const transform = this.values.has('transform') ? parentTransform.compose(SvgTransform.parse(this.values.get('transform')!)) : parentTransform;
     const effective = new Map([...inherited, ...attributes]);
     const shape = factory.fromAttributes(this.name, allocated.get(this)!, attributes, this.content);
-    if (shape instanceof Group) {
-      if (this.content.trim()) throw new Error('unexpected text inside <g>');
-      this.nodes.forEach(child => shape.add(child.toShape(factory, allocated, transform, effective)));
-    } else {
-      if (this.nodes.length) throw new Error(`unsupported child element in <${this.name}>`);
-      if (!(shape instanceof Text) && this.content.trim()) throw new Error(`unexpected text inside <${this.name}>`);
-      transform.apply(shape, effective);
-    }
+    shape.importChildren(this.nodes.map(child => child.toShape(factory, allocated, transform, effective)));
+    transform.apply(shape, effective);
     return shape;
   }
 }

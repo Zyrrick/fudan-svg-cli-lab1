@@ -26,8 +26,7 @@ export class ShapeFactory {
     // Ask a polymorphic prototype for its schema; no second tag-based dispatch.
     const prototype = this.create(type, id, this.defaults(type));
     const keys = Array.from(prototype.attributes().keys()).filter(key => key !== 'id');
-    const args = keys.map(key => attributes.get(key) ?? '0');
-    if (prototype instanceof Text) args.push(content);
+    const args = prototype.importArguments(attributes, content);
     const shape = this.create(type, id, args);
     attributes.forEach((value, key) => {
       if (key !== 'id' && !keys.includes(key)) shape.importAttribute(key, value);

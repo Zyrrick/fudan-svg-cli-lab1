@@ -1,17 +1,32 @@
 import { Validation } from './Validation.js';
-import type { Group } from './Group.js';
+import type { Container } from './Container.js';
+import { Hierarchy } from './Hierarchy.js';
 
 export abstract class Shape {
-  private owner: Group | null = null;
   private readonly presentation = new Map<string, string>();
   protected constructor(private readonly shapeId: string, private readonly tag: string) { Validation.id(shapeId); }
   get id(): string { return this.shapeId; }
   get type(): string { return this.tag; }
   get label(): string { return `${this.type}#${this.id}`; }
-  get parent(): Group | null { return this.owner; }
-  /** Only Group owns attachment; clients use Document operations. */
-  attach(parent: Group | null): void { this.owner = parent; }
+  get parent(): Container | null { return Hierarchy.parent(this); }
+  asContainer(): Container { throw new Error(`not a container: ${this.id}`); }
   children(): readonly Shape[] { return []; }
+  geometryTargets(): readonly Shape[] { return [this]; }
+  geometryValues(): ReadonlyMap<string, string> { return this.geometry(); }
+  restoreAttribute(attribute: string, value: string | undefined): void {
+    if (value === undefined) this.presentation.delete(attribute); else this.set(attribute, value);
+  }
+  importArguments(attributes: ReadonlyMap<string, string>, content: string): readonly string[] {
+    return [...Array.from(this.geometry().keys(), key => attributes.get(key) ?? '0'), ...this.contentParameters(content)];
+  }
+  protected contentParameters(content: string): readonly string[] {
+    if (content.trim()) throw new Error(`unexpected text inside <${this.type}>`); return [];
+  }
+  importChildren(children: readonly Shape[]): void { if (children.length) throw new Error(`unsupported child element in <${this.type}>`); }
+  importTransform(factor: number, dx: number, dy: number, inherited: ReadonlyMap<string, string>): void {
+    this.scale(factor); this.move(dx, dy);
+    if (factor !== 1) this.importAttribute('stroke-width', String(Validation.finite(Validation.number(inherited.get('stroke-width') ?? '1') * factor)));
+  }
   abstract move(dx: number, dy: number): void;
   abstract scale(factor: number): void;
   protected abstract duplicate(): Shape;

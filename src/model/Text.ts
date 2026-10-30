@@ -8,6 +8,11 @@ export class Text extends GeometricShape {
     this.content = Validation.xmlText(args[2]!);
   }
   protected override duplicate(): Text { return new Text(this.id, [...this.creationArgs(), this.content]); }
+  protected override contentParameters(content: string): readonly string[] { return [Validation.xmlText(content)]; }
+  override importTransform(factor: number, dx: number, dy: number, inherited: ReadonlyMap<string, string>): void {
+    super.importTransform(factor, dx, dy, inherited);
+    if (factor !== 1) this.importAttribute('font-size', String(Validation.finite(Validation.number(inherited.get('font-size') ?? '16') * factor)));
+  }
   override set(attribute: string, value: string): void {
     if (attribute === 'text') this.content = Validation.xmlText(value);
     else super.set(attribute, value);
