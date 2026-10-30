@@ -1,0 +1,6 @@
+# 原文第 0.1 节嵌套变换导入、展开和再次读取。
+read examples/transformed.svg
+tree
+save examples/transformed-flat.svg
+read examples/transformed-flat.svg
+show text1
