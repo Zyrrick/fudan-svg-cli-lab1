@@ -6,8 +6,9 @@ import { Line } from './Line.js';
 import { Text } from './Text.js';
 import { Group } from './Group.js';
 import { Validation } from './Validation.js';
+import type { ShapeProvider } from './ShapeProvider.js';
 
-export class ShapeFactory {
+export class ShapeFactory implements ShapeProvider {
   // Name dispatch 1/2: intentionally centralized, to revisit in the plugin phase.
   private readonly creators = new Map<string, { build: (id: string, args: readonly string[]) => Shape; defaults: readonly string[] }>([
     ['rect', { build: (id, args) => new Rect(id, args), defaults: ['0', '0', '0', '0'] }],

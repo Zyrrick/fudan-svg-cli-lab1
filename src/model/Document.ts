@@ -10,13 +10,13 @@ import type { Container } from './Container.js';
 import type { Change } from './Change.js';
 import type { State } from './State.js';
 import type { EditingReceiver } from './EditingReceiver.js';
+import type { ShapeProvider } from './ShapeProvider.js';
 
 export class Document implements EditingReceiver {
   private root: Container = new Group('__internal_canvas__');
-  private readonly factory = new ShapeFactory();
   private widthValue: number;
   private heightValue: number;
-  constructor(width = 800, height = 600) { this.widthValue = Validation.positive(width); this.heightValue = Validation.positive(height); }
+  constructor(width = 800, height = 600, private readonly factory: ShapeProvider = new ShapeFactory()) { this.widthValue = Validation.positive(width); this.heightValue = Validation.positive(height); }
   get width(): number { return this.widthValue; }
   get height(): number { return this.heightValue; }
   children(): readonly Shape[] { return this.root.children(); }
@@ -104,7 +104,7 @@ export class Document implements EditingReceiver {
   }
   parentLabel(shape: Shape): string { return shape.parent === this.root ? 'svg' : shape.parent!.label; }
   // Explicit copy API remains available for callers; editing/history never uses it.
-  clone(): Document { const copy = new Document(this.width, this.height); copy.root = this.root.component.clone().asContainer(); return copy; }
+  clone(): Document { const copy = new Document(this.width, this.height, this.factory); copy.root = this.root.component.clone().asContainer(); return copy; }
   restore(snapshot: Document): void { this.widthValue = snapshot.width; this.heightValue = snapshot.height; this.root = snapshot.root.component.clone().asContainer(); }
   xml(): string { return `<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" width="${this.width}" height="${this.height}" viewBox="0 0 ${this.width} ${this.height}">\n${this.children().map(shape => shape.xml('  ')).join('\n')}\n</svg>\n`; }
 }

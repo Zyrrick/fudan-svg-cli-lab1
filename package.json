@@ -16,7 +16,8 @@
     "demo": "node --import tsx src/cli/Main.ts < scripts/flowchart.cli",
     "check": "npm run typecheck && npm run lint && npm test && npm run build",
     "demo:typical": "node --import tsx src/cli/Main.ts < scripts/typical.cli",
-    "demo:transforms": "node --import tsx src/cli/Main.ts < scripts/transforms.cli"
+    "demo:transforms": "node --import tsx src/cli/Main.ts < scripts/transforms.cli",
+    "benchmark": "node --expose-gc --import tsx scripts/benchmark.mjs"
   },
   "dependencies": {
     "saxes": "^6.0.0"

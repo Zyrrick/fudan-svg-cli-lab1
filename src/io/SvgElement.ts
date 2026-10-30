@@ -1,5 +1,5 @@
 import { Shape } from '../model/Shape.js';
-import { ShapeFactory } from '../model/ShapeFactory.js';
+import type { ShapeProvider } from '../model/ShapeProvider.js';
 import { SvgTransform } from './SvgTransform.js';
 
 /** Private XML parse tree, discarded after validated conversion to the model. */
@@ -14,7 +14,7 @@ export class SvgElement {
   add(child: SvgElement): void { this.nodes.push(child); }
   append(text: string): void { this.content += text; }
   collect(): readonly SvgElement[] { return [this, ...this.nodes.flatMap(node => node.collect())]; }
-  toShape(factory: ShapeFactory, allocated: ReadonlyMap<SvgElement, string>, parentTransform = new SvgTransform(), inherited: ReadonlyMap<string, string> = new Map()): Shape {
+  toShape(factory: ShapeProvider, allocated: ReadonlyMap<SvgElement, string>, parentTransform = new SvgTransform(), inherited: ReadonlyMap<string, string> = new Map()): Shape {
     const attributes = new Map(this.values); attributes.delete('transform');
     const transform = this.values.has('transform') ? parentTransform.compose(SvgTransform.parse(this.values.get('transform')!)) : parentTransform;
     const effective = new Map([...inherited, ...attributes]);

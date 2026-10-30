@@ -3,8 +3,10 @@ import { Document } from '../model/Document.js';
 import { ShapeFactory } from '../model/ShapeFactory.js';
 import { Validation } from '../model/Validation.js';
 import { SvgElement } from './SvgElement.js';
+import type { ShapeProvider } from '../model/ShapeProvider.js';
 
 export class SvgCodec {
+  constructor(private readonly factory: ShapeProvider = new ShapeFactory()) {}
   decode(xml: string): { document: Document; warnings: readonly string[] } {
     if (Buffer.byteLength(xml, 'utf8') > 10 * 1024 * 1024) throw new Error('SVG exceeds 10 MiB limit');
     const parser = new SaxesParser({ xmlns: false });
@@ -50,8 +52,8 @@ export class SvgCodec {
       counters.set(element.name, serial); reserved.add(id); allocated.set(element, id);
       warnings.push(`warning: assigned id ${id} to unnamed <${element.name}>`);
     }
-    const document = new Document(width, height); const factory = new ShapeFactory();
-    root.children().forEach(element => document.add(element.toShape(factory, allocated)));
+    const document = new Document(width, height, this.factory);
+    root.children().forEach(element => document.add(element.toShape(this.factory, allocated)));
     return { document, warnings };
   }
   encode(document: Document): string { return document.xml(); }
