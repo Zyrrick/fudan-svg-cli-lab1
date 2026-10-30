@@ -6,7 +6,7 @@
 
 ## 安装、运行、验证
 
-推荐 Node.js 22 LTS 或 24 LTS（CI 均验证）；本地开发环境为 Node.js 26.5.0。需要 npm。
+推荐 Node.js 22 LTS 或 24 LTS（CI 配置覆盖）；本地开发环境为 Node.js 26.5.0。远端实际结果见对应提交的 Actions。需要 npm。
 
 ```sh
 git clone https://github.com/Zyrrick/fudan-svg-cli-lab1.git
@@ -20,12 +20,13 @@ npm run cli
 
 ```sh
 npm run check             # 源码和测试类型检查、ESLint、自动测试、构建
-npm test                  # 20 项行为/架构测试，含真实 CLI 子进程
+npm test                  # 36 项行为/架构测试，含真实 CLI 子进程
 npm run build
 node dist/cli/Main.js     # 执行已编译版本
 npm run demo              # 原文 6.1 两节点流程图
 npm run demo:typical      # 原文 6 典型会话，含两个预期错误
 npm run demo:transforms   # 原文 0.1 嵌套 translate/scale 示例
+npm run benchmark         # 局部历史状态的复制计数与资源参考测量
 ```
 
 回放脚本会重写对应 `examples/*.svg`，输出具有确定性。可直接用浏览器打开 [flowchart.svg](examples/flowchart.svg) 查看流程图；箭头示例按原文输出普通 line，不额外实现 marker。
@@ -51,6 +52,7 @@ npm run demo:transforms   # 原文 0.1 嵌套 translate/scale 示例
 
 - [doc/README.md](doc/README.md)：模块职责、PlantUML、模式、依赖规则、变化点、真实过程、自查和质量证据。
 - [doc/QA.md](doc/QA.md)：执行过的验证、边界和审查修正。
+- [doc/COURSE-REVIEW.md](doc/COURSE-REVIEW.md)：课件依据、五角色验收、真实红绿记录和资源前后对比。
 - [submission/README.md](submission/README.md)：面向课程验收的独立提交说明。
 - [scripts](scripts)：CLI 演示脚本；[examples](examples)：输入及真实生成 SVG。
 

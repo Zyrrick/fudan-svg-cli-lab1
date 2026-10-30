@@ -1,12 +1,14 @@
 # Lab1 Phase 1 开发文档
 
-## 初始架构方案（实现前）
+## 初始架构方案与课程复核修订
+
+初始方案在最早提交 `8bf834c` 中保存。其全量文档快照选择已在课程复核后替换为 Receiver 产生的局部状态；本文件下方“最终模块职责”和模式说明反映修订后的实现。具体课堂依据与本轮红绿证据见 [COURSE-REVIEW.md](COURSE-REVIEW.md)。
 
 模块：`model` 负责封装图形、Composite 与文档不变量；`commands` 负责编辑命令及精确撤销；`application` 负责会话状态、事务及历史边界；`io` 负责 SVG 解析与文件操作；`cli` 负责词法、命令分发和显示。每个类一个同名文件。
 
 依赖方向：cli → application/commands/io/model；application → commands/model/io；commands → model；io → model；model 不依赖其他模块。命令接口与文件端口用 TypeScript interface，同样单独文件。
 
-模式：Composite 统一容器与叶子操作；Command 表示一条编辑，使用文档快照 Memento 保证嵌套和顺序精确恢复；Factory 集中创建六种图形。按名字分派只有 CLI 命令表和 ShapeFactory 类型表两处，按原文暂标待重构；后续阶段才考虑注册扩展。不实现 box。
+模式：Composite 统一容器与叶子操作；Command 在创建时绑定 Receiver，每条编辑保留受影响属性/几何/结构位置的前后状态，保证精确恢复；Factory 集中创建六种图形。按名字分派只有 CLI 命令表和 ShapeFactory 类型表两处，按原文暂标待重构；后续阶段才考虑注册扩展。不实现 box。
 
 ```plantuml
 @startuml
@@ -27,7 +29,7 @@ io --> model
 @enduml
 ```
 
-变化点假设：图形种类会增长，工厂集中但本阶段不预做插件；输入界面可能变成 GUI，命令与模型不引用 readline；存储可能换后端，文件接口可替换；撤销规模可能增大，先选简单可靠的快照，之后可换差量；SVG 特性远多于六种内置图形，导入明确验证和拒绝未支持语义，避免静默丢失。
+变化点假设：图形种类会增长，工厂集中但本阶段不预做插件；输入界面可能变成 GUI，命令与模型不引用 readline；存储可能换后端，文件接口可替换；撤销规模会增大，因此课程复核后采用局部状态，仍保留精确浮点值而不反算；SVG 特性远多于六种内置图形，导入明确验证和拒绝未支持语义，避免静默丢失。
 
 ## 真实过程记录
 
@@ -43,21 +45,25 @@ io --> model
 
 | 模块 | 职责与关键类 |
 |---|---|
-| `model` | `Shape` 封装 ID、父指针与样式；`GeometricShape` 封装数值和几何操作；Rect/Circle/Ellipse/Line/Text/Group 六个具体类；`Document` 维护唯一 ID、层级、前序顺序、分组和快照；`ShapeFactory` 是唯一类型名分派 |
-| `commands` | `Command` 的 execute 模板保证原子应用并持有前后 Memento；Create/Delete/Move/Scale/Set/Group/Ungroup/AddTo/Order 各类只描述一条操作，不读写文件或输出终端 |
-| `application` | `Editor` 持有当前文档和最近成功 read 的原路径，协调文件解析与成功提交；`History` 持有 Command 栈与 IO 屏障 |
+| `model` | Shape/GeometricShape 与六种具体图形封装行为；Container 是容器契约，Hierarchy 原子维护父子双向关系；Document 实现 EditingReceiver，维护编辑业务与事务；EditRecord、GeometryState、PropertyState、PlacementState 保留局部状态；ShapeFactory 是唯一类型名分派并实现 ShapeProvider |
+| `commands` | UndoableCommand/BoundCommand 定义契约；Command 持有 Receiver 和 Change，维护执行生命周期；九种具体命令只保存参数并委托业务，不读写文件或输出终端 |
+| `application` | Editor 持有当前文档及 read 来源，拒绝错绑/旧文档命令；History 只依赖 UndoableCommand，是统一 Invoker，维护两栈与 IO 屏障 |
 | `io` | `FilePort` 可替换文件边界；`NodeFilePort` 同目录临时文件加 rename 原子替换；`SvgCodec` 用 saxes 解析 XML、预留 ID；`SvgElement` 为短生命周期解析树；`SvgTransform` 展开有限仿射变换 |
 | `cli` | `Main` 连接 readline 和标准输入输出；`Tokenizer` 处理引用和整行注释；`Controller` 是唯一命令名分派；`Presenter` 输出树、属性和帮助 |
 
 ### 设计模式的实际落地
 
-**Command + Memento**：`Command.execute` 先 clone 文档，应用操作后记录结果快照；抛错则 restore 初始快照。`History` 只在 execute 成功后入栈和清除 redo。undo/redo 恢复快照，不通过逆浮点运算猜测原值，因此嵌套层级、同级顺序、样式和文字都能精确回到旧状态。内存成本为 O(历史长度 × 文档大小)，本实验优先选择正确性，未实现差量压缩或无限规模保证。撤销反馈中的 `undone:` 指明先前操作已撤销，具体当前值可用 show/tree 查看。
+**Command 与局部 Memento**：Client 是 Controller，创建具体命令时绑定 EditingReceiver；Invoker 是 History，只调用无文档参数的 execute/undo/redo；Receiver 是 Document。Create 的唯一性检查、工厂构造、挂接均在 Receiver，其他编辑同样由 Receiver 执行业务。Command 只持有返回的 Change，状态仅在成功后前进。History 同样只在成功后移动两栈和清空 redo。
 
-**Composite**：Group 与叶子继承同一个 Shape；move/scale 通过虚方法递归，set 对共享样式统一处理，delete 以整棵子树为一个命令单元。文档层用 contains 检测祖先关系；不依赖 tag 名字判断容器，使用类和统一接口。
+Receiver 产生 EditRecord：move/scale 保存受影响 K 个叶子的前后几何值，set 保存单个属性值及缺省状态；结构操作保留对象、父级和位置，group/ungroup 保留成员顺序。失败时 Receiver 回滚局部状态；结构恢复本身失败也会回滚到恢复前的位置。删除保留原对象及子树，不复制无关图形。精确原值使撤销不依赖负 dx 或倒数 factor，避免浮点漂移。编辑历史不调用 Document.clone/restore 或 Shape.clone；显式复制 API 仍可独立使用。
+
+局部历史的主要空间为几何/属性变更值和被删除对象、结构位置，取决于实际受影响范围；整组缩放仍是 O(K)，并不承诺所有命令 O(1)。Document 当前 ID 查找仍遍历全文档，结构操作还可能移动同级数组，这些时间成本没有因取消快照而消失。撤销反馈中的 undone 指先前操作已撤销，当前值可用 show/tree 查看。
+
+**Composite（安全式）**：Group 与叶子继承 Shape，容器另实现 Container；叶子不提供 add/remove，asContainer 查询会明确抛错。Group 的 add 通过 Hierarchy 同时维护父指向及子列表并自行防环，Shape 没有 public attach，父级类型不再依赖具体 Group。move/scale 递归委派；set 用 SVG 样式继承；delete 作为子树编辑。Document、Presenter、SvgElement、SvgTransform 均不对具体图形做 instanceof，通过 children/asContainer/importArguments/importChildren/importTransform 等多态能力工作。
 
 **Factory**：`ShapeFactory` 的单个表集中类型构造与参数默认值。导入复用同一工厂，通过实例的几何 schema 构建形状。`Controller` 的单个表集中命令语法入口。两处名字分派均有代码注释，按作业要求标记待重构；本阶段没有为了 box 提前搭建插件系统。
 
-**文件端口**：应用依赖 FilePort 接口，真实 Node 文件与测试内存文件实现可替换。模型不读取文件，不输出错误，不知道终端。
+**接口与文件端口**：应用依赖 FilePort，History 依赖 UndoableCommand，具体命令依赖 EditingReceiver，SVG 导入依赖 ShapeProvider。测试可以替换 Receiver、Invoker 命令和图形工厂，不需要更改客户端遍历。模型不读文件、不接终端；没有为课程其他模式追加无需求功能。
 
 ```plantuml
 @startuml
@@ -66,6 +72,7 @@ abstract class Shape {
   +scale(factor)
   +set(attr,value)
   +clone()
+  +asContainer()
 }
 abstract class GeometricShape
 class Group
@@ -81,18 +88,35 @@ GeometricShape <|-- Circle
 GeometricShape <|-- Ellipse
 GeometricShape <|-- Line
 GeometricShape <|-- Text
-Group "1" *-- "0..*" Shape : children
+interface Container
+class Hierarchy
+Group ..|> Container
+Shape --> Container : readonly parent
+Group --> Hierarchy : link invariants
+Group "1" *-- "0..*" Shape : through Hierarchy
+Hierarchy --> Shape : maintains links
 class Document
-Document *-- Group : internal root
+interface EditingReceiver
+Document ..|> EditingReceiver
+Document *-- Container : internal root
 abstract class Command {
-  +execute(document)
-  +undo(document)
-  +redo(document)
-  #apply(document)
+  +execute()
+  +undo()
+  +redo()
+  #apply(): Change
 }
-Command --> Document : before/after mementos
+interface UndoableCommand
+interface BoundCommand
+BoundCommand --|> UndoableCommand
+Command ..|> BoundCommand
+Command --> EditingReceiver : bound at construction
+interface Change
+class EditRecord
+EditRecord ..|> Change
+Command --> Change
+Document --> EditRecord : local states
 class History
-History o-- Command : undo/redo stacks
+History o-- UndoableCommand : undo/redo stacks
 class Editor
 interface FilePort
 class NodeFilePort
@@ -110,7 +134,7 @@ SvgCodec --> Document
 
 最终目录与初始五模块一致。新增 SvgElement/SvgTransform 是 io 内部细分，未新增逆向依赖；增加 test、scripts、examples、submission 和 CI 为验证及交付材料，不作为业务模块。
 
-`contracts.test.ts` 扫描所有源码的 import，检查与初始依赖表一致，同时检查每个类的文件名和一类一文件规则。实际通过。抽样：Rect → GeometricShape（model 内）；MoveCommand → Document/Validation（commands → model）；History → Command/Document（application → commands/model）；SvgCodec → ShapeFactory/Document（io → model）；Main → Editor/NodeFilePort（cli → application/io）。Shape 的 Group 父指针是 model 内 `import type`，不会引入运行时反向初始化问题。
+`contracts.test.ts` 扫描源码 import、类文件命名及模块依赖规则。实际通过。抽样：MoveCommand → EditingReceiver/Validation（commands → model）；History → UndoableCommand（application → commands）；SvgElement → ShapeProvider（io → model）；Main → Editor/NodeFilePort（cli → application/io）。Shape 的父级仅依赖 Container 接口；Hierarchy 对 Shape/Container 使用类型导入，没有 Shape↔Group 的具体类反向耦合。course.test.ts 另检查客户端没有具体组件 instanceof。
 
 没有发现违反既定模块依赖方向的源码。当前没有第三处按图形名或命令名分派，也没有 switch(tag)。XML transform 的语法解析是文件格式语法校验，不用于图形类型分派。
 
@@ -119,7 +143,7 @@ SvgCodec --> Document
 1. 图形扩展：六个具行为的具体类与工厂集中变更；继承后的坐标 schema 决定几何操作。box 未实现，命令给出原文约定错误；插件是后续重构目标。
 2. 输入通道：命令和模型与 readline 无关，未来 GUI 可复用 Editor/Command。CLI 目前同步处理，未为无要求的并发编辑预留协同协议。
 3. 存储后端：FilePort 隔离存储；SvgCodec 只做字符串/Document 转换。
-4. 历史规模：Memento 的内存成本已明确；未来可替换为命令差量，但本阶段不为优化牺牲原子性。
+4. 历史规模：已从全量快照改成局部精确状态，同负载测量见课程复核。历史仍无持久化或自动裁剪，大量删除/大子树编辑仍可保留较多数据；后续可讨论预算与索引，但不能静默牺牲原子性或精确撤销。
 5. SVG 兼容范围：验证子集，拒绝未支持语义；在原计划安全拒绝 transform 基础上补充了可证明正确的 translate/等比 scale，仍未声称通用 SVG 导入。
 6. 属性传播：普通 g 使用 SVG 继承语义。addto/group/ungroup 改变归属时，未额外冻结旧父容器继承的样式；几何和层级按命令规则处理。这是当前明确的语义边界，后续若要求“外观无损重分组”，可加入计算样式固化策略。
 
@@ -143,9 +167,9 @@ SvgCodec --> Document
 
 ### 质量保证
 
-详见 [QA.md](QA.md)。已执行 `npm run check`：源码及测试 TypeScript 检查、ESLint、20 项测试、构建均通过；失败不变性测试逐条检查 36 类错误，并在每次失败后 redo 验证旧分支仍存在。通过真实文件原子替换测试、CLI 子进程和三个原文场景回放。
+详见 [QA.md](QA.md)。已执行 `npm run check`：源码及测试 TypeScript 检查、ESLint、36 项测试、构建均通过；失败不变性测试逐条检查 36 类错误，并在每次失败后 redo 验证旧分支仍存在。通过真实文件原子替换测试、CLI 子进程和三个原文场景回放。
 
-V8 实测覆盖率（Node 26.5.0、tsx 加载器，含 save 修复回归）为行 99.63%、分支 95.67%、函数 99.04%，只作为辅助证据，不等同于形式证明。Node 22/24 的 GitHub Actions 已实际通过（初始对应 d4af0ae）；最终提交的远端状态另以 final 标签和 Actions 为准。
+本轮 V8 实测覆盖率（Node 26.5.0、tsx 加载器）为行 99.34%、分支 96.80%、函数 98.48%，只作为辅助证据，不等同于形式证明。旧版本的 Node 22/24 CI 已通过；课程重构的最终远端验证以对应提交的 Actions 为准，不将本地结果替代远端结果。
 
 ### 用户后续授权：公开仓库
 
@@ -166,3 +190,14 @@ V8 实测覆盖率（Node 26.5.0、tsx 加载器，含 save 修复回归）为�
 ### 交付文档表述整理
 
 按课程要求保留本文件的真实 AI 协作过程、具体讨论、验证和迭代事实；删除根 README、提交说明及 QA 中重复的制作身份声明，未改写为学生独立完成，也不改变既有提交历史或程序功能。本次文档整理另作新提交，检查与 CI 通过后将 `final` 从 `d72d8d0f1b8c95f67a901b231aaf3514a29d76ad` 更新到本次文档提交，并同步更新提交 README 和源码归档。
+
+### 课程课件复核后的设计修正
+
+此前实现读过完整实验说明，但尚未完成课程课件审查；用户指出后，父任务团队实际读完 10 份、287 页课件并核对关键图表。本轮依据其提供的具体页码复核，不把后来阅读写成最初已读，也不把课堂倡导全部视为作业硬性要求。依据、取舍及验收见 [COURSE-REVIEW.md](COURSE-REVIEW.md)。
+
+- `a5d022f`：先新增并运行 9 项设计失败测试，退出码 1，保存真实红阶段。
+- `3c3b048`：Receiver 产生局部状态、Hierarchy 维护双向父子关系、移除客户端的具体类型判断；先运行 7 项原有模型/IO 回归通过。
+- `e6c4f07`：命令构造绑定 Receiver、History 改依赖无文档入参的接口；完整检查达到 29/29 绿阶段。
+- 后续验证增加替身 Receiver、非 Group/Text 子类的测试组件、多父级结构恢复、实际恢复失败的回滚和 Invoker 栈不变性；目前共 36 项通过。历史中旧测试只迁移装配签名，行为断言保留；本轮红绿过程不追写到原开发阶段。
+
+同负载资源测量中，1000 个矩形、50 条单叶移动历史从克隆 100100 个对象、约 57.49 MiB 增量，变为 0 次克隆、100 次局部几何采集、约 0.063 MiB 增量；一次 undo/redo 同样为 0 次克隆。该参考测量不是所有工作负载或平台的性能保证，大子树与删除对象仍需相应状态空间。
