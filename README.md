@@ -2,7 +2,7 @@
 
 复旦大学高级软件开发技术 Lab1 Phase 1：TypeScript 面向对象 SVG CLI 编辑器。作者账号：[Zyrrick / Ziyuan Liu](https://github.com/Zyrrick)，本次实现由 Codex 在用户授权下分阶段完成。
 
-仓库：[Zyrrick/fudan-svg-cli-lab1](https://github.com/Zyrrick/fudan-svg-cli-lab1)，**PUBLIC**（按用户后续明确授权公开）。交付标签：[final](https://github.com/Zyrrick/fudan-svg-cli-lab1/tree/final)。老师可直接访问；没有自动添加协作者。公开前已检查全部已提交历史，不含凭据、学号或完整课程原文。
+公开仓库：[Zyrrick/fudan-svg-cli-lab1](https://github.com/Zyrrick/fudan-svg-cli-lab1)，可直接访问。交付标签：[final](https://github.com/Zyrrick/fudan-svg-cli-lab1/tree/final)。
 
 ## 安装、运行、验证
 
@@ -51,7 +51,7 @@ npm run demo:transforms   # 原文 0.1 嵌套 translate/scale 示例
 
 - [doc/README.md](doc/README.md)：模块职责、PlantUML、模式、依赖规则、变化点、真实过程、自查和质量证据。
 - [doc/QA.md](doc/QA.md)：执行过的验证、边界和审查修正。
-- [submission/README.md](submission/README.md)：供用户预览、可上传 eLearning 的独立提交说明，未代提交。
+- [submission/README.md](submission/README.md)：面向课程验收的独立提交说明。
 - [scripts](scripts)：CLI 演示脚本；[examples](examples)：输入及真实生成 SVG。
 
 eLearning 提交与平台截止时区需要用户在提交前确认。平台显示截止为 2026-10-31 23:59，账户时区尚未验证；本项目没有将假定北京时间当作已核实事实。

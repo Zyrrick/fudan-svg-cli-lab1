@@ -1,12 +1,12 @@
 # Lab1 Phase 1 提交说明
 
-课程：复旦大学高级软件开发技术。姓名：刘子源（Ziyuan Liu）；GitHub：Zyrrick。未提供或核验学号，本文件不编造学号。
+课程：复旦大学高级软件开发技术。姓名：刘子源（Ziyuan Liu）；GitHub：Zyrrick。
 
 代码仓库：[https://github.com/Zyrrick/fudan-svg-cli-lab1](https://github.com/Zyrrick/fudan-svg-cli-lab1)
 
 最终交付版本：[final 标签](https://github.com/Zyrrick/fudan-svg-cli-lab1/tree/final)，请以该标签定位提交。开发历史包含实际分阶段方案、模型、Command、IO、CLI、回归修正和文档提交。
 
-**访问状态：仓库已按用户明确授权设为 PUBLIC，老师或助教可直接访问。公开前检查了所有已提交历史与交付文档，未发现凭据、学号或完整课程说明；没有添加协作者。**
+公开仓库，可直接访问。
 
 ## 内容与运行
 
@@ -30,4 +30,4 @@ npm run demo
 
 本阶段不实现 box/插件。导入支持 translate 和正数等比 scale 展开；旋转、非等比变换、CSS、path 等范围外内容明确拒绝。普通 g 保持 SVG 样式继承语义，改变父级会改变继承来源。
 
-本次由 Codex 智能体在用户要求下执行实现、测试与审查，过程记录没有虚构学生亲自发现问题或个人评价。未代提交到 eLearning；本文件供提交者预览后上传。
+本项目使用 Codex 智能体协作完成，代码实现、自动测试与 AI 审查过程记录于 `doc/README.md`。过程记录区分 AI 执行的工作，不将其写为学生亲自发现的问题或个人评价。
