@@ -37,4 +37,112 @@ io --> model
 
 ## 一致性自查与质量保证
 
-实现完成后补充真实结果。
+以下内容是实现后的实际记录，初始方案由最早的 `8bf834c` 提交保存。
+
+### 最终模块职责与关键类
+
+| 模块 | 职责与关键类 |
+|---|---|
+| `model` | `Shape` 封装 ID、父指针与样式；`GeometricShape` 封装数值和几何操作；Rect/Circle/Ellipse/Line/Text/Group 六个具体类；`Document` 维护唯一 ID、层级、前序顺序、分组和快照；`ShapeFactory` 是唯一类型名分派 |
+| `commands` | `Command` 的 execute 模板保证原子应用并持有前后 Memento；Create/Delete/Move/Scale/Set/Group/Ungroup/AddTo/Order 各类只描述一条操作，不读写文件或输出终端 |
+| `application` | `Editor` 持有当前文档和当前路径，协调文件解析与成功提交；`History` 持有 Command 栈与 IO 屏障 |
+| `io` | `FilePort` 可替换文件边界；`NodeFilePort` 同目录临时文件加 rename 原子替换；`SvgCodec` 用 saxes 解析 XML、预留 ID；`SvgElement` 为短生命周期解析树；`SvgTransform` 展开有限仿射变换 |
+| `cli` | `Main` 连接 readline 和标准输入输出；`Tokenizer` 处理引用和整行注释；`Controller` 是唯一命令名分派；`Presenter` 输出树、属性和帮助 |
+
+### 设计模式的实际落地
+
+**Command + Memento**：`Command.execute` 先 clone 文档，应用操作后记录结果快照；抛错则 restore 初始快照。`History` 只在 execute 成功后入栈和清除 redo。undo/redo 恢复快照，不通过逆浮点运算猜测原值，因此嵌套层级、同级顺序、样式和文字都能精确回到旧状态。内存成本为 O(历史长度 × 文档大小)，本实验优先选择正确性，未实现差量压缩或无限规模保证。撤销反馈中的 `undone:` 指明先前操作已撤销，具体当前值可用 show/tree 查看。
+
+**Composite**：Group 与叶子继承同一个 Shape；move/scale 通过虚方法递归，set 对共享样式统一处理，delete 以整棵子树为一个命令单元。文档层用 contains 检测祖先关系；不依赖 tag 名字判断容器，使用类和统一接口。
+
+**Factory**：`ShapeFactory` 的单个表集中类型构造与参数默认值。导入复用同一工厂，通过实例的几何 schema 构建形状。`Controller` 的单个表集中命令语法入口。两处名字分派均有代码注释，按作业要求标记待重构；本阶段没有为了 box 提前搭建插件系统。
+
+**文件端口**：应用依赖 FilePort 接口，真实 Node 文件与测试内存文件实现可替换。模型不读取文件，不输出错误，不知道终端。
+
+```plantuml
+@startuml
+abstract class Shape {
+  +move(dx,dy)
+  +scale(factor)
+  +set(attr,value)
+  +clone()
+}
+abstract class GeometricShape
+class Group
+class Rect
+class Circle
+class Ellipse
+class Line
+class Text
+Shape <|-- Group
+Shape <|-- GeometricShape
+GeometricShape <|-- Rect
+GeometricShape <|-- Circle
+GeometricShape <|-- Ellipse
+GeometricShape <|-- Line
+GeometricShape <|-- Text
+Group "1" *-- "0..*" Shape : children
+class Document
+Document *-- Group : internal root
+abstract class Command {
+  +execute(document)
+  +undo(document)
+  +redo(document)
+  #apply(document)
+}
+Command --> Document : before/after mementos
+class History
+History o-- Command : undo/redo stacks
+class Editor
+interface FilePort
+class NodeFilePort
+class SvgCodec
+Editor *-- History
+Editor *-- Document
+Editor --> FilePort
+Editor --> SvgCodec
+NodeFilePort ..|> FilePort
+SvgCodec --> Document
+@enduml
+```
+
+### 依赖方向自查
+
+最终目录与初始五模块一致。新增 SvgElement/SvgTransform 是 io 内部细分，未新增逆向依赖；增加 test、scripts、examples、submission 和 CI 为验证及交付材料，不作为业务模块。
+
+`contracts.test.ts` 扫描所有源码的 import，检查与初始依赖表一致，同时检查每个类的文件名和一类一文件规则。实际通过。抽样：Rect → GeometricShape（model 内）；MoveCommand → Document/Validation（commands → model）；History → Command/Document（application → commands/model）；SvgCodec → ShapeFactory/Document（io → model）；Main → Editor/NodeFilePort（cli → application/io）。Shape 的 Group 父指针是 model 内 `import type`，不会引入运行时反向初始化问题。
+
+没有发现违反既定模块依赖方向的源码。当前没有第三处按图形名或命令名分派，也没有 switch(tag)。XML transform 的语法解析是文件格式语法校验，不用于图形类型分派。
+
+### 变化点假设与最终选择
+
+1. 图形扩展：六个具行为的具体类与工厂集中变更；继承后的坐标 schema 决定几何操作。box 未实现，命令给出原文约定错误；插件是后续重构目标。
+2. 输入通道：命令和模型与 readline 无关，未来 GUI 可复用 Editor/Command。CLI 目前同步处理，未为无要求的并发编辑预留协同协议。
+3. 存储后端：FilePort 隔离存储；SvgCodec 只做字符串/Document 转换。
+4. 历史规模：Memento 的内存成本已明确；未来可替换为命令差量，但本阶段不为优化牺牲原子性。
+5. SVG 兼容范围：验证子集，拒绝未支持语义；在原计划安全拒绝 transform 基础上补充了可证明正确的 translate/等比 scale，仍未声称通用 SVG 导入。
+6. 属性传播：普通 g 使用 SVG 继承语义。addto/group/ungroup 改变归属时，未额外冻结旧父容器继承的样式；几何和层级按命令规则处理。这是当前明确的语义边界，后续若要求“外观无损重分组”，可加入计算样式固化策略。
+
+### 真实讨论、审查与迭代续记
+
+以下发现和修正由 AI 执行，不代表学生亲自审查或表达了个人评价。
+
+| 阶段/提交 | 实际讨论、发现与处理 |
+|---|---|
+| `8bf834c` | 先保存架构、依赖规则和阶段边界，随后才实现源码 |
+| `216d7c2` | 实现六种封装图形、Composite、层级和前序顺序。首次 tsx CLI 测试触发沙箱 IPC 权限错误，改为 `node --import tsx` 后测试成功；没有把失败运行算作通过 |
+| `c151354` | 引入 Command 前后快照和 History，测试递归缩放中途溢出后完整回滚、redo 保持和删除整棵子树恢复 |
+| `a4c999a` | IO 隔离；导入先预留全部显式 ID，避免给前面的匿名元素分配后来已用的 ID；文件成功后才更新路径和历史 |
+| `67855e1` | 完成 REPL/帮助/树/属性，逐条错误回归和真实 CLI 子进程；ESLint 对有意使用控制字符范围的 XML 验证正则报错，在该两行加有理由的局部豁免，未关闭全局规则 |
+| `7e6c158` | 父任务审查指出原文 0.1 的 transform 示例值得支持。AI 将最初“明确拒绝 transform”改为有限 translate/正数等比 scale 展开，补矩阵顺序、嵌套、线宽/字号和 roundtrip 测试；拒绝旋转、非等比缩放等 |
+| `f812832` | AI 继续审查发现原子写 cleanup 可能掩盖原始错误，改为失败时 best-effort 清理；同时拒绝资源 URL/转义 paint 与变换尾分隔符，并添加回归 |
+| `d4af0ae` | 回放原文典型会话与流程图、保存实际 SVG；增加全部几何 setter、依赖方向和文件命名契约；配置 Node 22/24 CI |
+| 最终文档阶段 | 补充已运行 QA、提交用 README、私有仓库访问限制。未伪造学生参与、学号、个人心得、测试结果或历史；未代交 eLearning |
+
+上述提交按实际完成阶段顺序创建并推送，没有先完成整个项目再回填假历史。完整原始说明保存在本任务工作区的上一级 `source/phase_cli_1.md`，核验 22,808 字节。
+
+### 质量保证
+
+详见 [QA.md](QA.md)。已执行 `npm run check`：源码及测试 TypeScript 检查、ESLint、17 项测试、构建均通过；失败不变性测试逐条检查 36 类错误，并在每次失败后 redo 验证旧分支仍存在。通过真实文件原子替换测试、CLI 子进程和三个原文场景回放。
+
+V8 实测覆盖率（Node 26.5.0、tsx 加载器）为行 99.63%、分支 95.47%、函数 99.04%，只作为辅助证据，不等同于形式证明。Node 22/24 的 GitHub Actions 已实际通过（对应 d4af0ae）；最终提交的远端状态另以 final 标签和 Actions 为准。
