@@ -3,6 +3,10 @@ import assert from 'node:assert/strict';
 import { SvgCodec } from '../src/io/SvgCodec.js';
 import { Editor } from '../src/application/Editor.js';
 import { CreateCommand } from '../src/commands/CreateCommand.js';
+import { NodeFilePort } from '../src/io/NodeFilePort.js';
+import { mkdtempSync, readFileSync, readdirSync, rmSync, mkdirSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 test('SVG reserves later explicit ids, restores entities and roundtrips nested groups', () => {
   const codec = new SvgCodec();
@@ -22,6 +26,7 @@ test('SVG rejects duplicate ids, malformed XML and unsupported semantics atomica
     '<svg><script>alert(1)</script></svg>', '<svg><g transform="rotate(30)"/></svg>',
     '<svg width="800" height="600" viewBox="0 0 400 300"/>',
     '<svg><text onclick="x">a</text></svg>', '<svg><text>&evil;</text></svg>',
+    '<svg><rect fill="url(https://example.com/remote.svg#paint)"/></svg>',
   ]) assert.throws(() => codec.decode(xml));
 });
 
@@ -39,7 +44,20 @@ test('nested translate/uniform scale flatten using SVG matrix order and inherite
   assert.equal(codec.decode(document.xml()).document.xml(), document.xml());
   const scaled = codec.decode('<svg><g transform="scale(2) translate(3 4)"><circle id="c" cx="1" cy="2" r="3"/></g></svg>').document.find('c').attributes();
   assert.equal(scaled.get('cx'), '8'); assert.equal(scaled.get('cy'), '12'); assert.equal(scaled.get('r'), '6');
-  for (const transform of ['scale(0)', 'scale(-1)', 'scale(1,2)', 'matrix(1 0 0 1 0 0)', 'translate(1) junk']) assert.throws(() => codec.decode(`<svg><g transform="${transform}"/></svg>`));
+  for (const transform of ['scale(0)', 'scale(-1)', 'scale(1,2)', 'matrix(1 0 0 1 0 0)', 'translate(1) junk', 'translate(1),']) assert.throws(() => codec.decode(`<svg><g transform="${transform}"/></svg>`));
+});
+
+test('atomic file replacement leaves existing target intact on rename failure and removes temporary bytes', () => {
+  const directory = mkdtempSync(join(tmpdir(), 'svg-file-'));
+  try {
+    const port = new NodeFilePort(); const target = join(directory, 'saved.svg');
+    port.write(target, 'old'); port.write(target, 'new'); assert.equal(readFileSync(target, 'utf8'), 'new');
+    const occupied = join(directory, 'occupied.svg'); mkdirSync(occupied);
+    assert.throws(() => port.write(occupied, 'replacement'));
+    assert.deepEqual(readdirSync(directory).sort(), ['occupied.svg', 'saved.svg']);
+    assert.equal(readFileSync(target, 'utf8'), 'new');
+    assert.throws(() => port.write(join(directory, 'missing', 'file.svg'), 'x'));
+  } finally { rmSync(directory, { recursive: true, force: true }); }
 });
 
 test('successful IO barriers and failed read/write leave document, history and path intact', () => {

@@ -7,6 +7,10 @@ export class NodeFilePort implements FilePort {
   write(path: string, content: string): void {
     const temporary = join(dirname(path), `.${basename(path)}.${randomUUID()}.tmp`);
     try { writeFileSync(temporary, content, { encoding: 'utf8', flag: 'wx' }); renameSync(temporary, path); }
-    finally { rmSync(temporary, { force: true }); }
+    catch (error) {
+      // Cleanup must not hide the original IO error or report a successful rename as failed.
+      try { rmSync(temporary, { force: true }); } catch { /* Best-effort cleanup after failure. */ }
+      throw error;
+    }
   }
 }

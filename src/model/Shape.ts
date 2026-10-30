@@ -24,6 +24,7 @@ export abstract class Shape {
   }
   set(attribute: string, value: string): void {
     if (!['fill', 'stroke', 'stroke-width'].includes(attribute)) throw new Error(`unknown attribute: ${attribute}`);
+    if (['fill', 'stroke'].includes(attribute) && /url\s*\(|\\/iu.test(value)) throw new Error('unsupported SVG paint: resource references are forbidden');
     if (attribute === 'stroke-width') value = String(Validation.nonnegative(Validation.number(value)));
     this.presentation.set(attribute, Validation.xmlText(value));
   }

@@ -19,7 +19,10 @@ export class SvgTransform {
       if (match[4] !== undefined && Validation.number(match[4]) !== Validation.number(match[3]!)) throw new Error('unsupported SVG transform: nonuniform scale');
       result = result.compose(local);
       remaining = remaining.slice(match[0].length).trimStart();
-      if (remaining.startsWith(',')) remaining = remaining.slice(1).trimStart();
+      if (remaining.startsWith(',')) {
+        remaining = remaining.slice(1).trimStart();
+        if (!remaining) throw new Error('unsupported SVG transform: trailing separator');
+      }
     }
     return result;
   }
