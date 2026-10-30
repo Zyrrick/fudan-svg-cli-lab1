@@ -63,18 +63,18 @@ test('atomic file replacement leaves existing target intact on rename failure an
 test('successful IO barriers and failed read/write leave document, history and path intact', () => {
   const storage = new Map<string, string>(); let fail = false;
   const editor = new Editor({ read: path => { if (!storage.has(path)) throw new Error('missing'); return storage.get(path)!; }, write: (path, content) => { if (fail) throw new Error('disk'); storage.set(path, content); } });
-  editor.init(); editor.execute(new CreateCommand(['g', 'a']));
+  editor.init(); editor.execute(new CreateCommand(editor.document(), ['g', 'a']));
   const before = editor.document().xml();
   assert.throws(() => editor.read('missing.svg'), /cannot read file: missing.svg/);
   fail = true; assert.throws(() => editor.save('bad.svg'), /cannot write file: bad.svg/);
   assert.equal(editor.document().xml(), before); editor.undo(); editor.redo();
   fail = false; editor.save('good.svg'); assert.throws(() => editor.undo(), /io command/);
   editor.read('good.svg');
-  editor.execute(new CreateCommand(['g', 'b'])); editor.canvas(); editor.undo();
+  editor.execute(new CreateCommand(editor.document(), ['g', 'b'])); editor.canvas(); editor.undo();
   assert.equal(editor.document().xml(), before);
   storage.set('malformed.svg', '<svg>'); assert.throws(() => editor.read('malformed.svg'));
   editor.save(); assert.equal(storage.get('good.svg'), before);
   editor.read('good.svg'); assert.throws(() => editor.redo(), /io command/);
-  editor.execute(new CreateCommand(['g', 'b'])); editor.canvas(123, 456);
+  editor.execute(new CreateCommand(editor.document(), ['g', 'b'])); editor.canvas(123, 456);
   assert.throws(() => editor.undo(), /io command/);
 });

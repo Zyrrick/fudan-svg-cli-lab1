@@ -1,26 +1,24 @@
-import { Document } from '../model/Document.js';
+import type { EditingReceiver } from '../model/EditingReceiver.js';
+import type { Change } from '../model/Change.js';
+import type { BoundCommand } from './BoundCommand.js';
 
-/** Command owns its mementos; only a successful apply becomes one history unit. */
-export abstract class Command {
-  private before?: Document;
-  private after?: Document;
-  private feedback = '';
-  protected abstract apply(document: Document): string;
-  execute(document: Document): string {
-    const before = document.clone();
-    try {
-      const feedback = this.apply(document);
-      const after = document.clone();
-      this.before = before; this.after = after; this.feedback = feedback;
-      return feedback;
-    } catch (error) { document.restore(before); throw error; }
+/** Bound request; the receiver owns business validation and precise local state. */
+export abstract class Command implements BoundCommand {
+  private change: Change | undefined;
+  private status: 'new' | 'done' | 'undone' = 'new';
+  protected constructor(protected readonly receiver: EditingReceiver) {}
+  isBoundTo(receiver: EditingReceiver): boolean { return this.receiver === receiver; }
+  protected abstract apply(): Change;
+  execute(): string {
+    if (this.status !== 'new') throw new Error('command already executed');
+    const change = this.apply(); this.change = change; this.status = 'done'; return change.feedback;
   }
-  undo(document: Document): string {
-    if (!this.before) throw new Error('command has not executed');
-    document.restore(this.before); return `undone: ${this.feedback}`;
+  undo(): string {
+    if (this.status !== 'done' || !this.change) throw new Error('command is not ready to undo');
+    this.change.undo(); this.status = 'undone'; return `undone: ${this.change.feedback}`;
   }
-  redo(document: Document): string {
-    if (!this.after) throw new Error('command has not executed');
-    document.restore(this.after); return `redone: ${this.feedback}`;
+  redo(): string {
+    if (this.status !== 'undone' || !this.change) throw new Error('command is not ready to redo');
+    this.change.redo(); this.status = 'done'; return `redone: ${this.change.feedback}`;
   }
 }

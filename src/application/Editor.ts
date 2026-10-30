@@ -1,4 +1,4 @@
-import { Command } from '../commands/Command.js';
+import type { BoundCommand } from '../commands/BoundCommand.js';
 import { Document } from '../model/Document.js';
 import type { FilePort } from '../io/FilePort.js';
 import { SvgCodec } from '../io/SvgCodec.js';
@@ -34,7 +34,11 @@ export class Editor {
     if (width !== undefined) { document.resize(width, height ?? document.height); this.history.barrier(); }
     return `canvas ${document.width}x${document.height}`;
   }
-  execute(command: Command): string { return this.history.execute(command, this.document()); }
-  undo(): string { return this.history.undo(this.document()); }
-  redo(): string { return this.history.redo(this.document()); }
+  execute(command: BoundCommand): string {
+    const document = this.document();
+    if (!command.isBoundTo(document)) throw new Error('command belongs to a different document');
+    return this.history.execute(command);
+  }
+  undo(): string { this.document(); return this.history.undo(); }
+  redo(): string { this.document(); return this.history.redo(); }
 }

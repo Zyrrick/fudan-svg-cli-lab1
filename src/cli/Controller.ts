@@ -1,5 +1,6 @@
 import { Editor } from '../application/Editor.js';
-import { Command } from '../commands/Command.js';
+import type { Command } from '../commands/Command.js';
+import type { EditingReceiver } from '../model/EditingReceiver.js';
 import { CreateCommand } from '../commands/CreateCommand.js';
 import { DeleteCommand } from '../commands/DeleteCommand.js';
 import { MoveCommand } from '../commands/MoveCommand.js';
@@ -24,16 +25,16 @@ export class Controller {
       ['read', args => { Validation.arity(args, 1); return editor.read(args[0]!); }],
       ['save', args => { Validation.arity(args, 0, 1); return editor.save(args[0]); }],
       ['canvas', args => { Validation.arity(args, 0, 2); return editor.canvas(args[0] === undefined ? undefined : Validation.number(args[0]), args[1] === undefined ? undefined : Validation.number(args[1])); }],
-      ['create', args => this.edit(args, values => new CreateCommand(values))],
-      ['delete', args => this.edit(args, values => new DeleteCommand(values))],
-      ['move', args => this.edit(args, values => new MoveCommand(values))],
-      ['scale', args => this.edit(args, values => new ScaleCommand(values))],
-      ['set', args => this.edit(args, values => new SetCommand(values))],
-      ['group', args => this.edit(args, values => new GroupCommand(values))],
-      ['ungroup', args => this.edit(args, values => new UngroupCommand(values))],
-      ['addto', args => this.edit(args, values => new AddToCommand(values))],
-      ['front', args => this.edit(args, values => new OrderCommand(values, true))],
-      ['back', args => this.edit(args, values => new OrderCommand(values, false))],
+      ['create', args => this.edit(args, (receiver, values) => new CreateCommand(receiver, values))],
+      ['delete', args => this.edit(args, (receiver, values) => new DeleteCommand(receiver, values))],
+      ['move', args => this.edit(args, (receiver, values) => new MoveCommand(receiver, values))],
+      ['scale', args => this.edit(args, (receiver, values) => new ScaleCommand(receiver, values))],
+      ['set', args => this.edit(args, (receiver, values) => new SetCommand(receiver, values))],
+      ['group', args => this.edit(args, (receiver, values) => new GroupCommand(receiver, values))],
+      ['ungroup', args => this.edit(args, (receiver, values) => new UngroupCommand(receiver, values))],
+      ['addto', args => this.edit(args, (receiver, values) => new AddToCommand(receiver, values))],
+      ['front', args => this.edit(args, (receiver, values) => new OrderCommand(receiver, values, true))],
+      ['back', args => this.edit(args, (receiver, values) => new OrderCommand(receiver, values, false))],
       ['undo', args => { Validation.arity(args, 0); return editor.undo(); }],
       ['redo', args => { Validation.arity(args, 0); return editor.redo(); }],
       ['tree', args => { Validation.arity(args, 0, 1); return this.presenter.tree(editor.document(), args[0]); }],
@@ -41,8 +42,8 @@ export class Controller {
       ['help', args => { Validation.arity(args, 0); return this.presenter.help(); }],
     ]);
   }
-  private edit(args: readonly string[], create: (args: readonly string[]) => Command): string {
-    this.editor.document(); return this.editor.execute(create(args));
+  private edit(args: readonly string[], create: (receiver: EditingReceiver, args: readonly string[]) => Command): string {
+    const receiver = this.editor.document(); return this.editor.execute(create(receiver, args));
   }
   run(line: string): string {
     try {

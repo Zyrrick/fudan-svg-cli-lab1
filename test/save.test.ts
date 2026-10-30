@@ -26,7 +26,7 @@ test('failed explicit and default saves preserve original source, document and r
     write: (path, content) => { if (blocked.has(path)) throw new Error('blocked'); storage.set(path, content); },
   });
   editor.read('source.svg'); editor.save('copy.svg');
-  editor.execute(new CreateCommand(['g', 'added'])); const edited = editor.document().xml();
+  editor.execute(new CreateCommand(editor.document(), ['g', 'added'])); const edited = editor.document().xml();
   editor.undo(); const before = editor.document().xml();
   blocked.add('failed-copy.svg');
   assert.throws(() => editor.save('failed-copy.svg'), /cannot write file: failed-copy.svg/);
@@ -48,7 +48,7 @@ test('init clears read source and save-as never creates a default path for a new
   assert.throws(() => editor.init(0, 600), /positive/);
   assert.equal(editor.save(), 'saved to source.svg (1 elements)');
   const source = files.read('source.svg');
-  editor.init(); editor.execute(new CreateCommand(['g', 'after-init']));
+  editor.init(); editor.execute(new CreateCommand(editor.document(), ['g', 'after-init']));
   editor.undo(); const empty = editor.document().xml();
   assert.throws(() => editor.save(), /no save path/);
   assert.equal(editor.document().xml(), empty); assert.equal(files.read('source.svg'), source);
@@ -57,7 +57,7 @@ test('init clears read source and save-as never creates a default path for a new
   assert.throws(() => editor.save(), /no save path/);
   assert.equal(editor.document().xml(), afterSave);
   assert.throws(() => editor.undo(), /io command/); assert.throws(() => editor.redo(), /io command/);
-  editor.read('new.svg'); editor.execute(new CreateCommand(['g', 'second']));
+  editor.read('new.svg'); editor.execute(new CreateCommand(editor.document(), ['g', 'second']));
   assert.equal(editor.save(), 'saved to new.svg (2 elements)');
   assert.equal(files.read('source.svg'), source);
 });
