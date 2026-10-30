@@ -16,10 +16,13 @@ export class Validation {
     return this.finite(value);
   }
   static id(value: string): string {
+    // Control characters are deliberately rejected here and in XML validation.
+    // eslint-disable-next-line no-control-regex
     if (!value || /[\s\u0000-\u001f\u007f]/u.test(value)) throw new Error('id must be nonempty and contain no whitespace or control characters');
     return this.xmlText(value);
   }
   static xmlText(value: string): string {
+    // eslint-disable-next-line no-control-regex
     if (/[^\u0009\u000a\u000d\u0020-\ud7ff\ue000-\ufffd\u{10000}-\u{10ffff}]/u.test(value)) throw new Error('invalid XML character');
     return value;
   }

@@ -14,6 +14,6 @@ export class Text extends GeometricShape {
   }
   protected override describeGeometry(): string { return `${super.describeGeometry()} ${JSON.stringify(this.content)}`; }
   protected override xmlBody(_indent: string): string { return `>${Validation.escape(this.content)}</text>`; }
-  override attributes(): ReadonlyMap<string, string> { return super.attributes(); }
+  override details(): ReadonlyMap<string, string> { return new Map([...super.details(), ['text', this.content]]); }
   get text(): string { return this.content; }
 }

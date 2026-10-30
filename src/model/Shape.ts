@@ -38,6 +38,7 @@ export abstract class Shape {
   attributes(): ReadonlyMap<string, string> {
     return new Map([['id', this.id], ...this.geometry(), ...this.presentation]);
   }
+  details(): ReadonlyMap<string, string> { return this.attributes(); }
   summary(): string {
     return [this.label, this.describeGeometry(), ...Array.from(this.presentation, ([k, v]) => `${k}=${JSON.stringify(v).replace(/^"([^"\\\s]*)"$/, '$1')}`)].filter(Boolean).join('  ');
   }
